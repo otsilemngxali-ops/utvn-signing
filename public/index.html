@@ -106,5 +106,62 @@
             }
         }
     </script>
+
+    <section class="panel" id="ledger-panel">
+      <div class="panel-title">03 — Public Ledger</div>
+      <p style="font-size:13px; color:#4a4a44; margin-bottom:20px; font-family:'Courier New',monospace;">All signed provenance records — publicly auditable in real time.</p>
+      <button onclick="loadLedger()" style="width:auto; padding:10px 24px; margin-bottom:24px;">Load Records</button>
+      <div id="ledger-loading" style="display:none; font-family:'Courier New',monospace; font-size:13px; color:#4a4a44;">Loading ledger...</div>
+      <div id="ledger-records"></div>
+    </section>
+
+    <script>
+    async function loadLedger() {
+      const loading = document.getElementById('ledger-loading');
+      const container = document.getElementById('ledger-records');
+      loading.style.display = 'block';
+      container.innerHTML = '';
+
+      try {
+        const res = await fetch('https://utvn-signing.utvn-signing.workers.dev/ledger');
+        const records = await res.json();
+
+        if (!records || records.length === 0) {
+          container.innerHTML = '<p style="font-family:Courier New,monospace; font-size:13px; color:#4a4a44;">No records found.</p>';
+          loading.style.display = 'none';
+          return;
+        }
+
+        records.forEach(record => {
+          const el = document.createElement('div');
+          el.style.cssText = 'background:#0a0a08; border:1px solid #2a2a26; padding:20px; margin-bottom:12px; font-family:Courier New,monospace;';
+          el.innerHTML = `
+            <div style="font-size:11px; color:#d4ff00; letter-spacing:0.15em; margin-bottom:12px;">RECORD</div>
+            <div style="display:grid; grid-template-columns:120px 1fr; gap:8px; font-size:13px;">
+              <span style="color:#4a4a44;">ID</span>
+              <span style="color:#c8c8be; word-break:break-all;">${record.id}</span>
+              <span style="color:#4a4a44;">CONTENT</span>
+              <span style="color:#c8c8be;">${record.content}</span>
+              <span style="color:#4a4a44;">HASH</span>
+              <span style="color:#c8c8be; word-break:break-all;">${record.content_hash}</span>
+              <span style="color:#4a4a44;">KEY ID</span>
+              <span style="color:#d4ff00;">${record.signing_key_id}</span>
+              <span style="color:#4a4a44;">TIMESTAMP</span>
+              <span style="color:#c8c8be;">${record.timestamp}</span>
+              <span style="color:#4a4a44;">VERSION</span>
+              <span style="color:#c8c8be;">${record.version}</span>
+            </div>
+            <button onclick="navigator.clipboard.writeText('${record.id}')" style="margin-top:12px; width:auto; padding:6px 16px; font-size:11px; background:none; border:1px solid #2a2a26; color:#4a4a44;">Copy ID</button>
+          `;
+          container.appendChild(el);
+        });
+
+        loading.style.display = 'none';
+      } catch(err) {
+        container.innerHTML = '<p style="font-family:Courier New,monospace; font-size:13px; color:#ff3a1f;">Failed to load ledger.</p>';
+        loading.style.display = 'none';
+      }
+    }
+    </script>
 </body>
 </html>
