@@ -1,0 +1,25 @@
+{
+  "name": "utvn-signing",
+  "main": "src/index.js",
+  "compatibility_date": "2025-01-01",
+
+  "vars": {
+    "UTVN_PUB": "24e82a5e91da2a561aab54d7030f0682ef5d1b3b2c51cdd76d20f476c9a72877"
+  },
+
+  "assets": {
+    "directory": "./public"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "utvn_ledger",
+      "database_name": "utvn-ledger",
+      "database_id": "8a743e01-81bd-47aa-b403-55311bc72d53"
+    }
+  ],
+
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
