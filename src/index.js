@@ -10,6 +10,15 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // Serve the landing page at the root and move the app under /app
+    if (url.pathname === "/" || url.pathname === "/index.html") {
+      return env.ASSETS.fetch(new Request(`${url.origin}/landing.html`, request));
+    }
+
+    if (url.pathname === "/app") {
+      return env.ASSETS.fetch(new Request(`${url.origin}/index.html`, request));
+    }
+
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: CORS_HEADERS });
     }
@@ -27,9 +36,8 @@ export default {
       return handleLedger(env);
     }
 
-    return new Response("UTVN Signing Service v0.2 — POST /sign | GET /verify/:id | GET /ledger", {
-      headers: CORS_HEADERS
-    });
+    // Fall back to the static asset server for unmatched routes like / and /landing.html
+    return env.ASSETS.fetch(request);
   }
 };
 
