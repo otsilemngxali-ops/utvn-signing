@@ -163,5 +163,102 @@
       }
     }
     </script>
+
+    <!-- MEDIA SIGNING PANEL -->
+    <div class="panel" id="media-panel" style="margin-top:2rem; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1.5rem;">
+      <h2 style="font-size:1.2rem; margin-top:0; margin-bottom:0.5rem; color:var(--text);">
+        <span style="background:var(--primary); color:#0f172a; width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:bold; margin-right:8px;">3</span>
+        Sign Media File
+      </h2>
+      <p style="color:var(--text-muted); font-size:0.9rem; margin:0 0 1rem 0;">Drop any video, audio, image, or document. The file is hashed locally — it never leaves your device. Only the fingerprint is signed.</p>
+
+      <div id="drop-zone" style="border:2px dashed var(--border); border-radius:8px; padding:40px; text-align:center; cursor:pointer; transition:border-color 0.2s;" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleDrop(event)">
+        <div style="font-size:32px; margin-bottom:12px;">📁</div>
+        <div style="color:var(--text-muted); font-size:0.9rem;">Drag and drop any file here, or click to select</div>
+        <div style="color:var(--text-muted); font-size:0.8rem; margin-top:8px;">Video · Audio · Images · Documents · Any format</div>
+        <input type="file" id="file-input" style="display:none" onchange="handleFileSelect(this.files[0])">
+      </div>
+
+      <div id="file-info" style="display:none; margin-top:1rem; background:#0d131f; border:1px solid var(--border); border-radius:6px; padding:1rem;">
+        <div style="display:grid; grid-template-columns:120px 1fr; gap:8px; font-size:0.85rem;">
+          <span style="color:var(--text-muted);">File Name</span>
+          <span id="file-name" style="color:var(--text); word-break:break-all;"></span>
+          <span style="color:var(--text-muted);">File Size</span>
+          <span id="file-size" style="color:var(--text);"></span>
+          <span style="color:var(--text-muted);">File Type</span>
+          <span id="file-type" style="color:var(--text);"></span>
+          <span style="color:var(--text-muted);">SHA-256 Hash</span>
+          <span id="file-hash" style="color:var(--primary); word-break:break-all; font-family:monospace; font-size:0.8rem;"></span>
+        </div>
+        <button onclick="signMediaFile()" style="margin-top:1rem; width:100%; background:var(--primary); color:#0f172a; border:none; padding:10px; border-radius:6px; font-weight:600; cursor:pointer;">Sign This File →</button>
+      </div>
+
+      <div id="media-loading" style="display:none; color:var(--text-muted); font-size:0.9rem; margin-top:1rem;">Hashing file locally...</div>
+      <pre id="media-result" style="display:none; background:#0d131f; border:1px solid var(--border); padding:1rem; border-radius:6px; overflow-x:auto; font-size:0.85rem; margin-top:1rem;"></pre>
+    </div>
+
+    <script>
+      let currentFile = null;
+      let currentHash = null;
+
+      function handleDrop(event) {
+        event.preventDefault();
+        document.getElementById('drop-zone').style.borderColor = 'var(--border)';
+        const file = event.dataTransfer.files[0];
+        if (file) processFile(file);
+      }
+
+      function handleFileSelect(file) {
+        if (file) processFile(file);
+      }
+
+      async function processFile(file) {
+        currentFile = file;
+        document.getElementById('media-loading').style.display = 'block';
+        document.getElementById('file-info').style.display = 'none';
+        document.getElementById('media-result').style.display = 'none';
+
+        const arrayBuffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        currentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        document.getElementById('file-name').textContent = file.name;
+        document.getElementById('file-size').textContent = formatSize(file.size);
+        document.getElementById('file-type').textContent = file.type || 'Unknown';
+        document.getElementById('file-hash').textContent = currentHash;
+
+        document.getElementById('media-loading').style.display = 'none';
+        document.getElementById('file-info').style.display = 'block';
+      }
+
+      async function signMediaFile() {
+        if (!currentFile || !currentHash) return;
+
+        const resultBox = document.getElementById('media-result');
+        resultBox.style.display = 'block';
+        resultBox.textContent = 'Signing file fingerprint...';
+
+        const content = `MEDIA:${currentFile.name}|SIZE:${currentFile.size}|TYPE:${currentFile.type}|SHA256:${currentHash}`;
+
+        try {
+          const res = await fetch('https://utvn-signing.utvn-signing.workers.dev/sign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: content
+          });
+          const data = await res.json();
+          resultBox.innerHTML = '✓ Media file provenance registered\n\n' + JSON.stringify(data, null, 2);
+        } catch(err) {
+          resultBox.textContent = '✗ Signing failed: ' + err.message;
+        }
+      }
+
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+    </script>
 </body>
 </html>
