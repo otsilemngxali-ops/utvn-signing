@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTVN Layer 2 - Transparency Ledger</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #f8fafc; --text-muted: #94a3b8; --primary: #38bdf8; --success: #34d399; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 2rem; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; color: var(--primary); font-size: 1.75rem; letter-spacing: -0.05em; }
+        .badge { background: #0369a1; color: #e0f2fe; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+        h2 { margin-top: 0; font-size: 1.2rem; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        textarea { wIDth: 100%; height: 100px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 0.75rem; box-sizing: border-box; resize: none; font-family: inherit; }
+        button { background: var(--primary); color: var(--bg); border: none; padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 1rem; wIDth: 100%; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .log-item { font-family: monospace; font-size: 0.85rem; background: var(--bg); padding: 1rem; border-radius: 6px; border: 1px solid var(--border); margin-top: 1rem; word-break: break-all; white-space: pre-wrap; }
+        .success-text { color: var(--success); font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>UTVN Provenance Engine</h1>
+                <p style="color: var(--text-muted); margin: 0.25rem 0 0 0;">Layer 1 Cryptographic Signer & Layer 2 Auditing Ledger</p>
+            </div>
+            <span class="badge">Ed25519 Active</span>
+        </header>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>1. Issue Content Provenance</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Input official statements, media logs, or disclosures to generate an immutable origin stamp.</p>
+                <textarea ID="signingInput" placeholder="Paste official text or asset metadata here..."></textarea>
+                <button onclick="signContent()">Cryptographically Sign Asset</button>
+                <div ID="signResult" style="display: none;">
+                    <p class="success-text">✓ Provenance Registered Successfully</p>
+                    <div class="log-item" ID="signReceipt"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>2. Independent Verification Audit</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Query the ledger directly using a unique tracking ID to confirm ownership and track file integrity.</p>
+                <input type="text" ID="verifyInput" placeholder="Enter Provenance Transaction ID..." style="wIDth: 100%; padding: 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: monospace;">
+                <button style="background: transparent; border: 1px solid var(--primary); color: var(--primary);" onclick="verifyContent()">Run Cryptographic Audit</button>
+                <div ID="verifyResult" style="display: none; margin-top: 1rem;">
+                    <p ID="verifyStatus"></p>
+                    <div class="log-item" ID="verifyReceipt"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://utvn-signing.utvn-signing.workers.dev";
+
+        async function signContent() {
+            const content = document.getElementById('signingInput').value;
+            if(!content) return alert("Please enter content to sign.");
+            
+            try {
+                const response = await fetch(`${API_URL}/sign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: content
+                });
+                const data = await response.json();
+                
+                document.getElementById('signResult').style.display = 'block';
+                document.getElementById('signReceipt').innerText = JSON.stringify(data, null, 2);
+                if (data.id) {
+                    document.getElementById('verifyInput').value = data.id;
+                }
+            } catch (err) {
+                alert("Signing failed. Check if wrangler dev is running.");
+            }
+        }
+
+        async function verifyContent() {
+            const ID = document.getElementById('verifyInput').value;
+            if(!ID) return alert("Please enter a provenance ID.");
+            
+            try {
+                const response = await fetch(`${API_URL}/verify/${ID}`);
+                const data = await response.json();
+                
+                const statusEl = document.getElementById('verifyStatus');
+                document.getElementById('verifyResult').style.display = 'block';
+                document.getElementById('verifyReceipt').innerText = JSON.stringify(data, null, 2);
+                
+                if(data.verified) {
+                    statusEl.className = "success-text";
+                    statusEl.innerText = "🔒 VERIFIED UNALTERED: Cryptographic origin matches public keys.";
+                } else {
+                    statusEl.className = "";
+                    statusEl.style.color = "#ef4444";
+                    statusEl.innerText = "⚠️ WARNING: Asset signature invalid or log tampered.";
+                }
+            } catch (err) {
+                alert("Verification lookup failed.");
+            }
+        }
+    </script>
+
+    <section class="panel" id="ledger-panel">
+      <div class="panel-title">03 — Public Ledger</div>
+      <p style="font-size:13px; color:#4a4a44; margin-bottom:20px; font-family:'Courier New',monospace;">All signed provenance records — publicly auditable in real time.</p>
+      <button onclick="loadLedger()" style="width:auto; padding:10px 24px; margin-bottom:24px;">Load Records</button>
+      <div id="ledger-loading" style="display:none; font-family:'Courier New',monospace; font-size:13px; color:#4a4a44;">Loading ledger...</div>
+      <div id="ledger-records"></div>
+    </section>
+
+    <script>
+    async function loadLedger() {
+      const loading = document.getElementById('ledger-loading');
+      const container = document.getElementById('ledger-records');
+      loading.style.display = 'block';
+      container.innerHTML = '';
+
+      try {
+        const res = await fetch('https://utvn-signing.utvn-signing.workers.dev/ledger');
+        const records = await res.json();
+
+        if (!records || records.length === 0) {
+          container.innerHTML = '<p style="font-family:Courier New,monospace; font-size:13px; color:#4a4a44;">No records found.</p>';
+          loading.style.display = 'none';
+          return;
+        }
+
+        records.forEach(record => {
+          const el = document.createElement('div');
+          el.style.cssText = 'background:#0a0a08; border:1px solid #2a2a26; padding:20px; margin-bottom:12px; font-family:Courier New,monospace;';
+          el.innerHTML = `
+            <div style="font-size:11px; color:#d4ff00; letter-spacing:0.15em; margin-bottom:12px;">RECORD</div>
+            <div style="display:grid; grid-template-columns:120px 1fr; gap:8px; font-size:13px;">
+              <span style="color:#4a4a44;">ID</span>
+              <span style="color:#c8c8be; word-break:break-all;">${record.id}</span>
+              <span style="color:#4a4a44;">CONTENT</span>
+              <span style="color:#c8c8be;">${record.content}</span>
+              <span style="color:#4a4a44;">HASH</span>
+              <span style="color:#c8c8be; word-break:break-all;">${record.content_hash}</span>
+              <span style="color:#4a4a44;">KEY ID</span>
+              <span style="color:#d4ff00;">${record.signing_key_id}</span>
+              <span style="color:#4a4a44;">TIMESTAMP</span>
+              <span style="color:#c8c8be;">${record.timestamp}</span>
+              <span style="color:#4a4a44;">VERSION</span>
+              <span style="color:#c8c8be;">${record.version}</span>
+            </div>
+            <button onclick="navigator.clipboard.writeText('${record.id}')" style="margin-top:12px; width:auto; padding:6px 16px; font-size:11px; background:none; border:1px solid #2a2a26; color:#4a4a44;">Copy ID</button>
+          `;
+          container.appendChild(el);
+        });
+
+        loading.style.display = 'none';
+      } catch(err) {
+        container.innerHTML = '<p style="font-family:Courier New,monospace; font-size:13px; color:#ff3a1f;">Failed to load ledger.</p>';
+        loading.style.display = 'none';
+      }
+    }
+    </script>
+</body>
+</html>
